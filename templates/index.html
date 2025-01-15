@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイム音声認識</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        /* 基本スタイル */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        main {
+            padding: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        section {
+            margin-bottom: 2rem;
+        }
+        h2 {
+            font-size: 1.4rem;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        li {
+            background: #fff;
+            margin: 0.5rem 0;
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        li:hover {
+            background-color: #f1f1f1;
+        }
+        iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header>
+        <h1>リアルタイム音声認識</h1>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main>
+        <!-- 認識された単語リスト -->
+        <section>
+            <h2>認識された単語</h2>
+            <ul id="text-list"></ul>
+        </section>
+
+        <!-- 停止ボタン -->
+        <button id="stop-button">音声認識を停止</button>
+    </main>
+
+    <script>
+        const socket = io.connect('http://127.0.0.1:5000');
+        const textList = document.getElementById('text-list');
+
+        // Wikipediaトグル表示用
+        let activeIframe = null;
+
+        function toggleWikipedia(word, parent) {
+            // 既存のiframeを削除
+            if (activeIframe) {
+                activeIframe.remove();
+                activeIframe = null;
+                parent.querySelector('iframe')?.remove();
+                return;
+            }
+
+            // iframeを作成
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://ja.wikipedia.org/wiki/${encodeURIComponent(word)}`;
+            iframe.style.display = 'block';
+            parent.appendChild(iframe);
+            activeIframe = iframe;
+        }
+
+        function createListItem(word) {
+            const listItem = document.createElement('li');
+            listItem.textContent = word;
+
+            // Wikipedia表示をトグル
+            listItem.addEventListener('click', () => toggleWikipedia(word, listItem));
+
+            textList.insertBefore(listItem, textList.firstChild);
+        }
+
+        // サーバーから新しい単語リストを受信
+        socket.on('new_text', function (words) {
+            words.forEach(word => createListItem(word));
+        });
+
+        // 音声認識停止ボタンの動作
+        document.getElementById('stop-button').addEventListener('click', () => {
+            fetch('/stop', { method: 'POST' })
+                .then(() => alert("音声認識を停止しました。"))
+                .catch(error => {
+                    console.error(error);
+                    alert("サーバーが停止しました。");
+                });
+        });
+    </script>
+</body>
+</html>
